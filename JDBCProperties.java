@@ -1,4 +1,4 @@
-package dbservlets;
+package dbproperties;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -17,7 +17,23 @@ import java.util.Properties;
 public class JDBCProperties {
 
 	public static void main(String[] args) {
-		//JDBCProperties.initProp("MySQL", "com.mysql.cj.jdbc.Driver", "localhost", "root", "root");
+		// TODO Auto-generated method stub
+		/*try(OutputStream output=new FileOutputStream("app.properties")) {
+			Properties prop=new Properties();
+			prop.setProperty("db.type", "MySQL");
+			prop.setProperty("db.driver", "mysql-connector-java-8.0.17.jar");
+			prop.setProperty("db.url", "localhost");
+			prop.setProperty("db.user", "root");
+			prop.setProperty("db.password", "root");
+			prop.store(output, "");
+			System.out.println(prop);
+		}
+		catch(IOException io) {
+			io.printStackTrace();
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}*/
 		Connection con;
 		try(InputStream input=new FileInputStream("app.properties")) {
 			if(input == null) {
@@ -37,13 +53,11 @@ public class JDBCProperties {
 			//JDBCProperties.testCon(con);
 			String xmls=JDBCProperties.readData("employee", "*", "1", con);
 			HashMap<String,String> hm=new HashMap<String,String>();
-			hm.put("9","Alan");
-			hm.put("10","Bailey");
-			//String res=JDBCProperties.saveData("employee", hm, con);
-			con.close();
-			String str=JDBCProperties.getNValueOf(xmls, "name", 3);
-			System.out.println("abc:");
-			System.out.println(str);
+			hm.put("employee_id","11");
+			hm.put("name","Alan");
+			
+			String res=JDBCProperties.saveData("employee", hm, con);
+			
 		}
 		catch(IOException io) {
 			io.printStackTrace();
@@ -56,17 +70,20 @@ public class JDBCProperties {
 	public static Connection connect(String db,String dbDriver,String host,String user,String pass) {
 		Connection connection;
 		try {
-			System.out.println(dbDriver);
 			Class.forName(dbDriver);
+		} catch (ClassNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		try {
 			String url="jdbc:"+db+"://"+host+"/";
 			connection = DriverManager
 					.getConnection(url,user,pass);
 			return connection;
-		} catch (ClassNotFoundException | SQLException e1) {
+		} catch (SQLException e) {
 			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			e.printStackTrace();
 		}
-		
 		return null;
 	}
 	public static void testCon(Connection con) {
@@ -84,8 +101,7 @@ public class JDBCProperties {
 		
 	}
 	public static String readData(String tableName,String columnName,String value,Connection con) {
-		//String query="select "+columnName+" from `newschema`."+tableName+" where employee_id= "+value;
-		String query="select * from `newschema`.employee";
+		String query="select "+columnName+" from `newschema`."+tableName+" where employee_id= "+value;
 		StringBuilder xml=new StringBuilder();
 		try {
 			PreparedStatement stmt=con.prepareStatement(query);
@@ -96,14 +112,13 @@ public class JDBCProperties {
 					
 					xml.append("<Employee>");
 					for(int i=1;i<=rsmd.getColumnCount();i++) {
-						xml.append(" <"+ rsmd.getColumnName(i) +"> ");
+						xml.append("<"+ rsmd.getColumnName(i) +">");
 						xml.append(rs.getString(i));
-						xml.append(" </"+ rsmd.getColumnName(i) +">");
+						xml.append("</"+ rsmd.getColumnName(i) +">");
 					}
-					xml.append(" </Employee> ");
+					xml.append("</Employee>");
 				}
 			}
-			System.out.println(xml);
 			return xml.toString();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -112,25 +127,34 @@ public class JDBCProperties {
 		return null;
 	}
 	public static String saveData(String tableName,HashMap<String,String>hm,Connection con) {
-		//String query="";
-		//for(String s:hm.keySet()) {
-			String query="insert into `newschema`."+tableName+"(employee_id,name) values(?,?)";
-		//}
-		
+			String query="insert into `newschema`."+tableName+" (";
+
 		try {
-			PreparedStatement stmt=con.prepareStatement(query);
-			for(String s:hm.keySet()) {
-				stmt.setString(1, s);
-				stmt.setString(2, hm.get(s));
-				stmt.addBatch();
-				System.out.println(query);
-			}
-			int []a=stmt.executeBatch();
 			
-			if(a[a.length-1]>0 && a[a.length-1]==hm.size()) {
+			for(int i=0;i<hm.entrySet().size();i++) {
+				if(i==0) {
+					query+=hm.keySet().toArray()[i];
+				}
+				else {
+					query+=","+hm.keySet().toArray()[i];
+				}
+			}
+			query+=") values(?,?);";
+			PreparedStatement stmt=con.prepareStatement(query);
+			int i=1;
+			for(String s:hm.keySet()) {
+				//stmt.setString(i, s);
+				stmt.setString(i, hm.get(s));
+				
+				
+				i++;
+			}
+			System.out.println(stmt);
+			int a=stmt.executeUpdate();
+			if(a>0 && a==hm.size()) {
 				return "Update Success";
 			}
-			else if(a[a.length-1]>0 && a[a.length-1]<hm.size()) {
+			else if(a>0 && a<hm.size()) {
 				return "Partial success";
 			}
 			else {
@@ -143,77 +167,6 @@ public class JDBCProperties {
 			return "Update failure";
 		}
 		
-	}
-	
-	public static String saveData(String query,Connection con) {
-		try {
-			PreparedStatement stmt=con.prepareStatement(query);
-			int a=stmt.executeUpdate();
-			if(a>0) {
-				return "Success";
-			}
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return "Failure";
-	}
-	public static void initProp(String type,String driver,String host,String usr,String pass ) {
-		try(OutputStream output=new FileOutputStream("app.properties")) {
-		Properties prop=new Properties();
-			prop.setProperty("db.type", type);
-			prop.setProperty("db.driver", driver);
-			prop.setProperty("db.url", host);
-			prop.setProperty("db.user", usr);
-			prop.setProperty("db.password", pass);
-			prop.store(output, "");
-		}
-		catch(IOException io) {
-			io.printStackTrace();
-		}
-		catch(Exception e) {
-			e.printStackTrace();
-		}
-	}
-	/*returns a single xml record as String  where valueof is tag value*/
-	public static String getNValueOf(String xmlStr,String valueOf,int index) {
-		//TODO: xml logic
-		int currVal=0;
-		boolean inField=false;
-		boolean ret=false;
-		String empRec="";
-		String[] arr=xmlStr.split(" ");
-		for(String s:arr) {
-			System.out.println(s+" "+empRec.equals("</Employee>"));
-			empRec+=s;
-			
-			if(s.equals("</"+valueOf+">")) {
-				inField=false;
-			}
-			if(inField) {
-				System.out.println("infield" +currVal+" "+index);
-				currVal++;
-				if(currVal == index) {
-					ret=true;
-				}
-			}
-			if(s.equals("<"+valueOf+">")) {
-				inField=true;
-			}
-			
-			else if(s.equals("</Employee>")) {
-				if(ret) {
-					return empRec;
-				}
-				else {
-					empRec="";
-				}
-			}
-			
-		}
-		System.out.println("Reached end of XML records without finding value");
-		return "";
 	}
 
 }
